@@ -30,6 +30,7 @@ for idx in range(3):
     plt.legend(loc="lower right")
     plt.xlabel("Time [s]")
     plt.ylabel("MRP Error")
+    plt.title("Reward 2")
 
 plt.figure()
 for idx in range(3, 6):

@@ -175,13 +175,14 @@ class SpaceCraftEnv2(gym.Env):
         self.render_mode = render_mode
         self.reference = [0, 0, 0]
         self.attError = [0, 0, 0]
-        self.preAttError = [0, 0, 0]
         self.sigma = [0, 0, 0]
         self.omega = [0, 0, 0]
         self.reward = 0
         self.action = [0, 0, 0, 0]
         self.observation = []
         self.stepCount = 0
+        self.faultTime = 0
+        self.wheelNum = 0
         # Torques in x, y, z.
         self.action_space = spaces.Box(low=-1, high=1, shape=(4,), dtype=np.float16)
 
@@ -190,21 +191,27 @@ class SpaceCraftEnv2(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed, options=options)
-
+        self.reference = np.random.uniform(low=-1, high=1, size=3)
+        self.faultTime = np.random.randint(low=0, high=3000)
+        self.wheelNum = np.random.randint(low=0, high=4)
         self.attError = RigidBodyKinematics.subMRP(np.array([0, 0, 0]), -np.array(self.reference)).tolist()
-        self.preAttError = [0, 0, 0]
         self.sigma = [0, 0, 0]
         self.omega = [0, 0, 0]
         self.reward = 0
         self.observation = np.array(self.attError + self.omega).astype(np.float16)
         self.stepCount = 0
-        return self.observation, {}  # empty info dict
+        print(f"reference:{self.reference}")
+        print(f"faultTime:{self.faultTime}")
+        print(f"wheelNum:{self.wheelNum}")
+        return self.observation, {}
 
     def step(self, action):
         done = False
         truncated = False
         self.stepCount = self.stepCount + 1
         self.action = 0.01 * action
+        if self.stepCount > self.faultTime:
+            self.action[self.wheelNum] = 0
         self.sigma, self.omega = DynSpacecraft(0.01, 0.01, self.sigma, self.omega, self.action)
         self.preAttError = self.attError
         self.attError = RigidBodyKinematics.subMRP(np.array(self.sigma), -np.array(self.reference)).tolist()
@@ -212,7 +219,84 @@ class SpaceCraftEnv2(gym.Env):
 
         preError = 4 * np.arctan(np.linalg.norm(self.preAttError))
         curError = 4 * np.arctan(np.linalg.norm(self.attError))
-        rate = preError - curError
+
+        r1 = 0
+        if self.stepCount == 6000 and curError < 0.0043633:
+            r1 = 1
+
+        r2 = (preError - curError) / np.pi
+
+        r3 = 0
+        if np.abs(self.omega[0]) > 1 or np.abs(self.omega[1]) > 1 or np.abs(self.omega[2]) > 1:
+            r3 = -1
+            done = True
+
+        self.reward = r1 + r2 + r3
+
+        if self.stepCount > 6000:
+            truncated = True
+        # Optionally we can pass additional info, we are not using that for now
+        info = {}
+        return self.observation, self.reward, done, truncated, info
+
+    def render(self):
+        pass
+
+    def close(self):
+        pass
+
+
+class TestEnv2(gym.Env):
+    metadata = {"render_modes": ["console"]}
+
+    def __init__(self, render_mode="console", attRef=[0, 0, 0], wheelNum=-1, faultTime=0):
+        super(TestEnv2, self).__init__()
+
+        self.render_mode = render_mode
+        self.reference = attRef
+        self.attError = [0, 0, 0]
+        self.sigma = [0, 0, 0]
+        self.omega = [0, 0, 0]
+        self.reward = 0
+        self.action = [0, 0, 0, 0]
+        self.observation = []
+        self.stepCount = 0
+        self.faultTime = faultTime
+        self.wheelNum = wheelNum
+        # Torques in x, y, z.
+        self.action_space = spaces.Box(low=-1, high=1, shape=(4,), dtype=np.float16)
+
+        # Attitude errors and angular velocity
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,), dtype=np.float16)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed, options=options)
+        self.attError = RigidBodyKinematics.subMRP(np.array([0, 0, 0]), -np.array(self.reference)).tolist()
+        self.sigma = [0, 0, 0]
+        self.omega = [0, 0, 0]
+        self.reward = 0
+        self.observation = np.array(self.attError + self.omega).astype(np.float16)
+        self.stepCount = 0
+        print(f"reference:{self.reference}")
+        print(f"faultTime:{self.faultTime}")
+        print(f"wheelNum:{self.wheelNum}")
+        return self.observation, {}
+
+    def step(self, action):
+        done = False
+        truncated = False
+        self.stepCount = self.stepCount + 1
+        self.action = 0.01 * action
+        if self.stepCount > self.faultTime and self.wheelNum > -1:
+            self.action[self.wheelNum] = 0
+        self.sigma, self.omega = DynSpacecraft(0.01, 0.01, self.sigma, self.omega, self.action)
+        self.preAttError = self.attError
+        self.attError = RigidBodyKinematics.subMRP(np.array(self.sigma), -np.array(self.reference)).tolist()
+        self.observation = np.array(self.attError + self.omega).astype(np.float16)
+
+        preError = 4 * np.arctan(np.linalg.norm(self.preAttError))
+        curError = 4 * np.arctan(np.linalg.norm(self.attError))
+
         r1 = 0
         if self.stepCount == 6000 and curError < 0.0043633:
             r1 = 1

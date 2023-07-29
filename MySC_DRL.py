@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from stable_baselines3 import PPO
-from MyEnv import SpaceCraftEnv
 
 # The path to the location of Basilisk
 # Used to get the location of supporting data.
@@ -18,7 +17,7 @@ bskPath = __path__[0]
 fileName = os.path.basename(os.path.splitext(__file__)[0])
 
 
-def DynSpacecraft(attref: list, totalTime, timestep):
+def DynSpacecraft(attref, totalTime, timestep):
     # region Simulation Parameters
     simTaskName = "simTask"
     simProcessName = "simProcess"
@@ -58,25 +57,13 @@ def DynSpacecraft(attref: list, totalTime, timestep):
     scSim.AddModelToTask(simTaskName, rwStateEffector, None, 20)
 
     # setup the controller
-    controller = Controller(attref, "models/300000.zip")
+    controller = Controller(attref)
     controller.ModelTag = "myController"
     scSim.AddModelToTask(simTaskName, controller, None, 1)
-
-    # Sim Manager
-    simManager = SimManager()
-    simManager.ModelTag = "SimManager"
-    scSim.AddModelToTask(simTaskName, simManager)
-
-    # external torque
-    extTorque = extForceTorque.ExtForceTorque()
-    extTorque.ModelTag = "externalTorque"
-    scObject.addDynamicEffector(extTorque)
-    scSim.AddModelToTask(simTaskName, extTorque)
 
     # link messages
     controller.stateInMsg.subscribeTo(scObject.scStateOutMsg)
     rwStateEffector.rwMotorCmdInMsg.subscribeTo(controller.wheelTorqueOutMsg)
-    extTorque.cmdTorqueInMsg.subscribeTo(simManager.extTorqueOutMsg)
 
     stateLog = scObject.scStateOutMsg.recorder()
     scSim.AddModelToTask(simTaskName, stateLog)
@@ -131,14 +118,14 @@ def DynSpacecraft(attref: list, totalTime, timestep):
 
 
 class Controller(sysModel.SysModel):
-    def __init__(self, attRef: list, modelPath: str):
+    def __init__(self, attRef):
         super(Controller, self).__init__()
 
         self.attRef = np.array(attRef)
         self.stateInMsg = messaging.SCStatesMsgReader()
         self.wheelTorqueOutMsg = messaging.ArrayMotorTorqueMsg()
         self.attErrorOutMsg = messaging.AttGuidMsg()
-        self.model = PPO.load(modelPath)
+        self.model = PPO.load("saved_model/R2.zip")
 
     def Reset(self, CurrentSimNanos):
         return
@@ -152,7 +139,8 @@ class Controller(sysModel.SysModel):
         print("2")
         attError = RigidBodyKinematics.subMRP(curSigma_BN, -self.attRef)
         print(np.array(attError.tolist() + curOmega_BN_B.tolist()).astype(np.float32))
-        action, _ = self.model.predict(np.array(attError.tolist() + curOmega_BN_B.tolist()).astype(np.float32))
+        obs = np.array(attError.tolist() + curOmega_BN_B.tolist()).astype(np.float16)
+        action, _ = self.model.predict(obs)
         print(action)
 
         attErrorOutMsgBuffer.sigma_BR = attError.tolist()
@@ -165,34 +153,6 @@ class Controller(sysModel.SysModel):
         return
 
 
-class SimManager(sysModel.SysModel):
-    def __init__(self):
-        super(SimManager, self).__init__()
-        self.extTorqueOutMsg = messaging.CmdTorqueBodyMsg()
-        self.rwAvaiOutMsg = messaging.RWAvailabilityMsg()
-
-    def Reset(self, CurrentSimNanos):
-        return
-
-    def UpdateState(self, CurrentSimNanos):
-        extTorqueOutMsgBuffer = messaging.CmdTorqueBodyMsgPayload()
-        rwAvaiOutMsgBuffer = messaging.RWAvailabilityMsgPayload()
-
-        if CurrentSimNanos < macros.sec2nano(10.0):
-            extTorqueOutMsgBuffer.torqueRequestBody = [0, 0, 0]
-        else:
-            extTorqueOutMsgBuffer.torqueRequestBody = [0, 0, 0]
-
-        if CurrentSimNanos < macros.sec2nano(1.0):
-            rwAvaiOutMsgBuffer.wheelAvailability = [messaging.AVAILABLE, messaging.AVAILABLE, messaging.AVAILABLE, messaging.AVAILABLE]
-        else:
-            rwAvaiOutMsgBuffer.wheelAvailability = [messaging.AVAILABLE, messaging.AVAILABLE, messaging.AVAILABLE, messaging.AVAILABLE]
-
-        self.extTorqueOutMsg.write(extTorqueOutMsgBuffer, CurrentSimNanos, self.moduleID)
-        self.rwAvaiOutMsg.write(rwAvaiOutMsgBuffer, CurrentSimNanos, self.moduleID)
-        return
-
-
 if __name__ == "__main__":
     # reference, simulation time, timestep
-    DynSpacecraft([0.5, 0.5, 0.5], 60, 0.01)
+    DynSpacecraft(np.array([0.5, 0.5, 0.5]), 60, 0.01)
