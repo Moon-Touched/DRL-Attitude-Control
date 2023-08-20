@@ -190,8 +190,8 @@ class Controller(sysModel.SysModel):
         torqueOutMsgBuffer = messaging.CmdTorqueBodyMsgPayload()
 
         # compute control solution
-        lrCmd = np.array(guidMsgBuffer.sigma_BR) * self.Kp + np.array(guidMsgBuffer.omega_BR_B) * self.Kd
-        # lrCmd = np.array([0, 1, 0])
+        # lrCmd = np.array(guidMsgBuffer.sigma_BR) * self.Kp + np.array(guidMsgBuffer.omega_BR_B) * self.Kd
+        lrCmd = np.array([0, 0.01, 0])
         torqueOutMsgBuffer.torqueRequestBody = (lrCmd).tolist()
 
         self.cmdTorqueOutMsg.write(torqueOutMsgBuffer, CurrentSimNanos, self.moduleID)

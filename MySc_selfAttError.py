@@ -44,7 +44,7 @@ def DynSpacecraft(attref, totalTime, timestep):
     RW1 = rwFactory.create("Honeywell_HR16", [1, 0, 0], maxMomentum=50.0, Omega=0.0, RWModel=varRWModel)
     RW2 = rwFactory.create("Honeywell_HR16", [0, 1, 0], maxMomentum=50.0, Omega=0.0, RWModel=varRWModel)
     RW3 = rwFactory.create("Honeywell_HR16", [0, 0, 1], maxMomentum=50.0, Omega=0.0, RWModel=varRWModel)
-    RW4 = rwFactory.create("Honeywell_HR16", [1, 1, 1], maxMomentum=50.0, Omega=0.0, RWModel=varRWModel)
+    RW4 = rwFactory.create("Honeywell_HR16", [np.sqrt(3) / 3, np.sqrt(3) / 3, np.sqrt(3) / 3], maxMomentum=50.0, Omega=0.0, RWModel=varRWModel)
 
     numRW = rwFactory.getNumOfDevices()
 
@@ -70,22 +70,22 @@ def DynSpacecraft(attref, totalTime, timestep):
     scObject.addDynamicEffector(extTorque)
     scSim.AddModelToTask(simTaskName, extTorque)
 
-    rwMotorTorqueConfig = rwMotorTorque.rwMotorTorqueConfig()
-    rwMotorTorqueWrap = scSim.setModelDataWrap(rwMotorTorqueConfig)
-    rwMotorTorqueWrap.ModelTag = "rwMotorTorque"
-    scSim.AddModelToTask(simTaskName, rwMotorTorqueWrap, rwMotorTorqueConfig)
-    
-    controlAxes_B = [1, 0, 0, 0, 1, 0, 0, 0, 1]
-    rwMotorTorqueConfig.controlAxes_B = controlAxes_B
+    # rwMotorTorqueConfig = rwMotorTorque.rwMotorTorqueConfig()
+    # rwMotorTorqueWrap = scSim.setModelDataWrap(rwMotorTorqueConfig)
+    # rwMotorTorqueWrap.ModelTag = "rwMotorTorque"
+    # scSim.AddModelToTask(simTaskName, rwMotorTorqueWrap, rwMotorTorqueConfig)
+
+    # controlAxes_B = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+    # rwMotorTorqueConfig.controlAxes_B = controlAxes_B
 
     rwParamMsg = rwFactory.getConfigMessage()
 
     # link messages
     controller.stateInMsg.subscribeTo(scObject.scStateOutMsg)
-    rwMotorTorqueConfig.rwParamsInMsg.subscribeTo(rwParamMsg)
-    rwMotorTorqueConfig.vehControlInMsg.subscribeTo(controller.axisTorqueOutMsg)
-    rwStateEffector.rwMotorCmdInMsg.subscribeTo(rwMotorTorqueConfig.rwMotorTorqueOutMsg)
-    # rwStateEffector.rwMotorCmdInMsg.subscribeTo(controller.wheelTorqueOutMsg)
+    # rwMotorTorqueConfig.rwParamsInMsg.subscribeTo(rwParamMsg)
+    # rwMotorTorqueConfig.vehControlInMsg.subscribeTo(controller.axisTorqueOutMsg)
+    # rwStateEffector.rwMotorCmdInMsg.subscribeTo(rwMotorTorqueConfig.rwMotorTorqueOutMsg)
+    rwStateEffector.rwMotorCmdInMsg.subscribeTo(controller.wheelTorqueOutMsg)
     extTorque.cmdTorqueInMsg.subscribeTo(simManager.extTorqueOutMsg)
 
     stateLog = scObject.scStateOutMsg.recorder()
@@ -94,8 +94,8 @@ def DynSpacecraft(attref, totalTime, timestep):
     attErrorLog = controller.attErrorOutMsg.recorder()
     scSim.AddModelToTask(simTaskName, attErrorLog)
 
-    rwMotorLog = rwMotorTorqueConfig.rwMotorTorqueOutMsg.recorder()
-    scSim.AddModelToTask(simTaskName, rwMotorLog)
+    # rwMotorLog = rwMotorTorqueConfig.rwMotorTorqueOutMsg.recorder()
+    # scSim.AddModelToTask(simTaskName, rwMotorLog)
 
     cmdTorqueLog = controller.axisTorqueOutMsg.recorder()
     scSim.AddModelToTask(simTaskName, cmdTorqueLog)
@@ -106,26 +106,24 @@ def DynSpacecraft(attref, totalTime, timestep):
     scSim.ExecuteSimulation()
 
     timeAxis = attErrorLog.times()
-    plt.figure()
+    fig, axes = plt.subplots(nrows=1, ncols=3)
     for idx in range(3):
-        plt.plot(timeAxis * macros.NANO2SEC, attErrorLog.sigma_BR[:, idx], color=unitTestSupport.getLineColor(idx, 3), label="sigma" + str(idx + 1))
-    plt.legend(loc="lower right")
-    plt.xlabel("Time [s]")
-    plt.ylabel("MRP Error")
+        axes[0].plot(timeAxis * macros.NANO2SEC, attErrorLog.sigma_BR[:, idx], color=unitTestSupport.getLineColor(idx, 3), label=r"$\sigma_" + str(idx + 1) + "$")
+    axes[0].legend(loc="lower right")
+    axes[0].set_xlabel("Time [s]")
+    axes[0].set_ylabel("MRP Error")
 
-    plt.figure()
     for idx in range(3):
-        plt.plot(timeAxis * macros.NANO2SEC, stateLog.omega_BN_B[:, idx], color=unitTestSupport.getLineColor(idx, 3), label="omega" + str(idx + 1))
-    plt.legend(loc="lower right")
-    plt.xlabel("Time [s]")
-    plt.ylabel("Current angular velocity [r/s]")
+        axes[1].plot(timeAxis * macros.NANO2SEC, stateLog.omega_BN_B[:, idx], color=unitTestSupport.getLineColor(idx, 3), label=r"$\omega_" + str(idx + 1) + "$")
+    axes[1].legend(loc="lower right")
+    axes[1].set_xlabel("Time [s]")
+    axes[1].set_ylabel("Current angular velocity [r/s]")
 
-    plt.figure()
-    for idx in range(numRW):
-        plt.plot(timeAxis * macros.NANO2SEC, rwMotorLog.motorTorque[:, idx], label="RW" + str(idx + 1))
-    plt.legend(loc="lower right")
-    plt.xlabel("Time [s]")
-    plt.ylabel("RW Torque")
+    # for idx in range(numRW):
+    #     axes[2].plot(timeAxis * macros.NANO2SEC, rwMotorLog.motorTorque[:, idx], label="RW" + str(idx + 1))
+    # axes[2].legend(loc="lower right")
+    # axes[2].set_xlabel("Time [s]")
+    # axes[2].set_ylabel("RW Torque [Nm]")
 
     # hingiadaiojlaaijianif
     # plt.figure()
@@ -134,7 +132,7 @@ def DynSpacecraft(attref, totalTime, timestep):
     # plt.legend(loc="lower right")
     # plt.xlabel("Time [s]")
     # plt.ylabel("Axis Torque")
-
+    plt.tight_layout()
     plt.show()
 
     return
@@ -167,12 +165,12 @@ class Controller(sysModel.SysModel):
 
         axisTorque = (np.array(attError) * self.Kp + np.array(curOmega_BN_B) * self.Kd).tolist()
         # wheelTorque = np.array([0, 0, 0, 0])
-        wheelTorque = (np.array(attError) * self.Kp + np.array(curOmega_BN_B) * self.Kd).tolist()
+        # wheelTorque = (np.array(attError) * self.Kp + np.array(curOmega_BN_B) * self.Kd).tolist()
 
         axisTorqueOutMsgBuffer.torqueRequestBody = axisTorque
-        wheelTorqueOutMsgBuffer.motorTorque = wheelTorque + [0]
+        wheelTorqueOutMsgBuffer.motorTorque = [0.01, 0, 0, 0]
 
-        #self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"{axisTorque}")
+        # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"{axisTorque}")
 
         self.wheelTorqueOutMsg.write(wheelTorqueOutMsgBuffer, CurrentSimNanos, self.moduleID)
         self.axisTorqueOutMsg.write(axisTorqueOutMsgBuffer, CurrentSimNanos, self.moduleID)
@@ -211,4 +209,5 @@ class SimManager(sysModel.SysModel):
 
 if __name__ == "__main__":
     # reference, simulation time, timestep
-    DynSpacecraft([0.5, 0.2, 0.7], 20, 0.1)
+    DynSpacecraft([-0.1, 0.5, -0.6], 20, 0.1)
+    DynSpacecraft([0.5, 0.3, 0.7], 20, 0.1)
