@@ -22,10 +22,10 @@ class DynamicModel:
         self.pre_omega = np.array([0.0, 0.0, 0.0])
         self.omega = np.array([0.0, 0.0, 0.0])
 
+        # 误差四元数，取虚部作为控制输入
         self.pre_error = self.quat_error(self.pre_quat, self.ref_quat)
         self.pre_error = self.pre_error / np.linalg.norm(self.pre_error)
-        self.pre_error = self.pre_error[1:]
-        self.error = np.array([0.0, 0.0, 0.0])
+        self.error = np.array([1.0, 0.0, 0.0, 0.0])
 
         self.quat_history = [self.pre_quat]
         self.omega_history = [self.pre_omega]
@@ -57,7 +57,6 @@ class DynamicModel:
 
         self.error = self.quat_error(self.quat, self.ref_quat)
         self.error = self.error / np.linalg.norm(self.error)
-        self.error = self.error[1:]
         self.error_history.append(self.error)
 
         self.pre_quat, self.pre_omega, self.pre_error = self.quat, self.omega, self.error
@@ -117,7 +116,7 @@ def PDtest(mode):
     print(model.ref_quat)
     quat, omega, error = model.pre_quat, model.pre_omega, model.pre_error
     for i in range(steps):
-        torque = Kp * error - Kd * omega
+        torque = Kp * error[1:4] - Kd * omega
         quat, omega, error = model.step(torque)
     return model.quat_history, model.omega_history, model.error_history, model.torque_history
 

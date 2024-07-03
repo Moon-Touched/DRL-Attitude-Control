@@ -30,12 +30,13 @@ class MyEnv(gym.Env):
         self.model: DynamicModel = DynamicModel(0.01, self.reference, mode=1)
         self.reward = 0
         self.action = np.zeros(4)  # 四轮力矩
-        self.observation = np.zeros(10)  # 四元数，角度误差，角速度
+        self.observation = np.zeros(6)  # 四元数，角度误差，角速度
         self.stepCount = 0
         self.faultTime = np.random.randint(low=0, high=3000)
         self.wheelNum = np.random.randint(low=-1, high=4)
 
-        self.observation = np.hstack([self.model.pre_error, self.model.pre_omega])
+        # 误差用四元数表示，取虚部
+        self.observation = np.hstack([self.model.pre_error[1:4], self.model.pre_omega])
         print(f"reference:{self.reference}")
         print(f"faultTime:{self.faultTime}")
         print(f"wheelNum:{self.wheelNum}")
@@ -52,10 +53,10 @@ class MyEnv(gym.Env):
                 self.action[self.wheelNum] = 0
 
         self.model.step(self.action)
-        self.observation = np.hstack([self.model.pre_error, self.model.pre_omega])
+        self.observation = np.hstack([self.model.pre_error[1:4], self.model.pre_omega])
 
-        pre_error = 4 * np.arctan(np.linalg.norm(self.model.error_history[-2]))
-        cur_error = 4 * np.arctan(np.linalg.norm(self.model.error_history[-1]))
+        pre_error = 2 * np.arccos(np.linalg.norm(self.model.error_history[-2][0]))
+        cur_error = 2 * np.arccos(np.linalg.norm(self.model.error_history[-1][0]))
 
         r1 = 0
         if self.stepCount == 6000 and cur_error < 0.0043633:
