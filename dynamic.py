@@ -142,7 +142,7 @@ if __name__ == "__main__":
     ax.legend()
 
     ax = axes[0, 1]
-    ax.plot(error_history, label=["error_x", "error_y", "error_z"])
+    ax.plot(error_history, label=["error_w", "error_x", "error_y", "error_z"])
     ax.set_title("Error History")
     ax.legend()
 
