@@ -5,7 +5,7 @@ from stable_baselines3 import PPO
 from env import MyEnv
 
 
-def train(path: str, num_timestep: int = 6000, num_episode: int = 2000, learning_rate=0.0003):
+def train2(path: str, num_timestep: int = 6000, num_episode: int = 2000, learning_rate=0.0003):
     models_dir = f"{path}/LR{learning_rate}/model"
     logdir = f"{path}/LR{learning_rate}/logs"
     name = f"LR{learning_rate}"
@@ -27,4 +27,4 @@ def train(path: str, num_timestep: int = 6000, num_episode: int = 2000, learning
     return
 
 
-train(path="C:/training/", num_timestep=6000, num_episode=2000, learning_rate=0.0003)
+train2(path="C:/training/env2", num_timestep=6000, num_episode=2000, learning_rate=0.0003)

@@ -6,14 +6,14 @@ class DynamicModel:
     # mode: 0： 直接输入三轴力矩, 1： 输入四轮转矩再映射到三轴
     # 四轮分布为[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1]
 
-    def __init__(self, T_s: float, I: np.ndarray[float], ref_quat: np.ndarray[np.float32], mode: int):
+    def __init__(self, T_s: float, ref_quat: np.ndarray[np.float32], mode: int):
         self.T_s = T_s
         self.ref_quat = ref_quat
         self.mode = mode
         if mode == 1:
             self.map_matrix = np.array([[1, 0, 0, np.sqrt(3) / 3], [0, 1, 0, np.sqrt(3) / 3], [0, 0, 1, np.sqrt(3) / 3]])
 
-        self.I = np.diag(I)
+        self.I = np.diag([0.025, 0.05, 0.065])
         self.I_inv = np.linalg.inv(self.I)
 
         self.pre_quat = np.array([1.0, 0.0, 0.0, 0.0])
@@ -38,30 +38,44 @@ class DynamicModel:
         else:
             torque = torque_in
         self.torque_history.append(torque)
-        omega_dot = self.I_inv @ (torque - np.cross(self.pre_omega, np.dot(self.I, self.pre_omega)))
-        self.omega = self.pre_omega + omega_dot * self.T_s
-        self.omega_history.append(self.omega)
-
-        theta = (self.omega + self.pre_omega) / 2 * self.T_s
-        theta_norm = np.linalg.norm(theta)
-        if theta_norm > 0:  # 避免除以零
-            qw = np.cos(theta_norm / 2)
-            qv = theta / theta_norm * np.sin(theta_norm / 2)
-            q_trans = np.array([qw, qv[0], qv[1], qv[2]])
-        else:
-            q_trans = np.array([1.0, 0.0, 0.0, 0.0])
-
-        self.quat = self.quat_mul(self.pre_quat, q_trans)
-        self.quat = self.quat / np.linalg.norm(self.quat)
-        self.quat_history.append(self.quat)
-
-        self.error = self.quat_error(self.quat, self.ref_quat)
-        self.error = self.error / np.linalg.norm(self.error)
-        self.error_history.append(self.error)
 
         self.pre_quat, self.pre_omega, self.pre_error = self.quat, self.omega, self.error
 
         return self.quat, self.omega, self.error
+
+    def rk4(self, torque):
+        def omega_dot(torque):
+            return self.I_inv @ (torque - np.cross(self.pre_omega, np.dot(self.I, self.pre_omega)))
+
+        k1_omega = omega_dot(torque)
+        k1_q = self.quat_mul(self.pre_quat, np.hstack([0, self.pre_omega])) / 2
+
+        # Compute k2
+        omega_half = self.pre_omega + 0.5 * self.T_s * k1_omega
+        q_half = self.pre_quat + 0.5 * self.T_s * k1_q
+        k2_omega = omega_dot(omega_half, J, T)
+        k2_q = q_dot(q_half, omega_half)
+
+        # Compute k3
+        omega_half = omega + 0.5 * dt * k2_omega
+        q_half = q + 0.5 * dt * k2_q
+        k3_omega = omega_dot(omega_half, J, T)
+        k3_q = q_dot(q_half, omega_half)
+
+        # Compute k4
+        omega_full = omega + dt * k3_omega
+        q_full = q + dt * k3_q
+        k4_omega = omega_dot(omega_full, J, T)
+        k4_q = q_dot(q_full, omega_full)
+
+        # Update omega and q
+        omega_next = omega + (dt / 6) * (k1_omega + 2 * k2_omega + 2 * k3_omega + k4_omega)
+        q_next = q + (dt / 6) * (k1_q + 2 * k2_q + 2 * k3_q + k4_q)
+
+        # Normalize quaternion
+        q_next = q_next / np.linalg.norm(q_next)
+
+        return omega_next, q_next
 
     def quat_mul(self, p, q):
         w1, x1, y1, z1 = p
@@ -115,53 +129,3 @@ class DynamicModel:
         ax.set_title("Torque History")
         ax.legend()
         plt.show()
-
-
-def eulerXYZ_to_quat(euler):
-    c1 = np.cos(euler[0] / 2)
-    s1 = np.sin(euler[0] / 2)
-    c2 = np.cos(euler[1] / 2)
-    s2 = np.sin(euler[1] / 2)
-    c3 = np.cos(euler[2] / 2)
-    s3 = np.sin(euler[2] / 2)
-
-    q = np.array([c1 * c2 * c3 + s1 * s2 * s3, s1 * c2 * c3 - c1 * s2 * s3, c1 * s2 * c3 + s1 * c2 * s3, c1 * c2 * s3 - s1 * s2 * c3])
-    return q / np.linalg.norm(q)
-
-
-def random_ref():
-    psi = np.random.uniform(-np.pi, np.pi)  # yaw，偏航角，绕z轴
-    theta = np.random.uniform(-np.pi / 2, np.pi / 2)  # pitch，俯仰角，绕y轴
-    phi = np.random.uniform(-np.pi, np.pi)  # roll，横滚角，绕x轴
-    print(phi, theta, psi)
-    ref = eulerXYZ_to_quat(np.array([phi, theta, psi]))
-    ref = ref / np.linalg.norm(ref)
-    return ref
-
-
-def PDtest(mode):
-
-    steps = 6000
-    T_s = 0.01
-    Kp = 0.08
-    Kd = 0.5
-    model = DynamicModel(T_s, random_ref(), mode)
-    print(model.ref_quat)
-    quat, omega, error = model.pre_quat, model.pre_omega, model.pre_error
-    for i in range(steps):
-        torque = Kp * error[1:4] - Kd * omega
-        quat, omega, error = model.step(torque)
-    model.draw(error_format="angle")
-    return model.quat_history, model.omega_history, model.error_history, model.torque_history
-
-
-if __name__ == "__main__":
-
-    def quat_to_eulerXYZ(quat):
-        qw, qx, qy, qz = quat
-        phi = np.arctan2(2 * (qw * qx + qy * qz), 1 - 2 * (qx * qx + qy * qy))
-        theta = np.arcsin(2 * (qw * qy - qx * qz))
-        psi = np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz))
-        return np.array([phi, theta, psi])
-
-    quat_history, omega_history, error_history, torque_history = PDtest(0)

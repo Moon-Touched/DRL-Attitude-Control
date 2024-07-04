@@ -20,24 +20,7 @@ def load(path: str):
         env.model.error_history,
         env.model.torque_history,
     )
-    fig = plt.figure()
-
-    ax = fig.add_subplot(3, 1, 1)
-    ax.plot(quat_history, label=["w", "x", "y", "z"])
-    ax.set_title("Quaternion History")
-    ax.legend()
-
-    ax = fig.add_subplot(3, 1, 2)
-    ax.plot(error_history, label=["error_x", "error_y", "error_z"])
-    ax.set_title("Error History")
-    ax.legend()
-
-    ax = fig.add_subplot(3, 1, 3)
-    ax.plot(omega_history, label=["omega_x", "omega_y", "omega_z"])
-    ax.set_title("Angular Velocity History")
-    ax.legend()
-
-    plt.show()
+    env.model.draw(error_format="angle")
 
 
-load("C:/training/LR0.0003/model/61440.zip")
+load("C:/training/LR0.0003/model/2420736.zip")
