@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def eulerXYZ_to_quat(euler: np.ndarray) -> np.ndarray:
@@ -56,3 +57,28 @@ def random_euler():
     psi = np.random.uniform(-np.pi, np.pi)
 
     return np.array([phi, theta, psi])
+
+
+def plot_history(dynamic_model):
+    fig, axes = plt.subplots(2, 2)
+
+    ax = axes[0, 0]
+    ax.plot(dynamic_model.MRP_history, label=["x", "y", "z"])
+    ax.set_title("MRP History")
+    ax.legend()
+
+    ax = axes[0, 1]
+    ax.plot(dynamic_model.error_MRP_history, label=["error_x", "error_y", "error_z"])
+    ax.set_title("Error History")
+    ax.legend()
+
+    ax = axes[1, 0]
+    ax.plot(dynamic_model.omega_history, label=["omega_x", "omega_y", "omega_z"])
+    ax.set_title("Angular Velocity History")
+    ax.legend()
+
+    ax = axes[1, 1]
+    ax.plot(dynamic_model.error_angle_history, label="error")
+    ax.set_title("error_angle_history")
+    ax.legend()
+    plt.show()
