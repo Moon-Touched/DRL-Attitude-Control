@@ -86,26 +86,6 @@ class TrainEnv4(BasiliskEnv):
         return reward
 
 
-class TrainRWEnv1(BasiliskRWEnv):
-    def calculate_reward(self):
-        pre_error = self.model.error_angle_history[-2]
-        cur_error = self.model.error_angle_history[-1]
-
-        r1 = (pre_error - cur_error) / np.pi
-
-        r2 = 0
-        if np.abs(self.model.cur_omega[0]) > 1 or np.abs(self.model.cur_omega[1]) > 1 or np.abs(self.model.cur_omega[2]) > 1:
-            r2 = -1
-
-        r3 = 0
-        if self.step_count == 6000 and cur_error < 0.0043633:
-            r3 = 1
-
-        reward = r1 + r2 + r3
-        # print(f"r1: {r1}, r2: {r2}")
-        return reward
-
-
 def train(
     path: str,
     env_name: str,
@@ -117,6 +97,22 @@ def train(
     torque_mode: str = "wheel",
     device="cuda",
 ):
+    """Train the model.
+
+    Args:
+        path (str): The path to save the trained models and logs.
+        env_name (str): The name of the environment to train on.
+        num_timestep (int): The total number of timesteps to train for.
+        num_episode (int, optional): The number of episodes to train for. Defaults to 2000.
+        env_num (int, optional): The number of parallel environments. Defaults to 4.
+        vec_env_cls (class, optional): The class for creating vectorized environments. Defaults to DummyVecEnv.
+        faulty (bool, optional): Whether to use a faulty environment. Defaults to False.
+        torque_mode (str, optional): The torque mode to use. Defaults to "wheel".
+        device (str, optional): The device to use for training. Defaults to "cuda".
+
+    Returns:
+        None
+    """
 
     train_name = f"{env_name}_{faulty}_{torque_mode}"
     models_dir = f"{path}/{train_name}/model"
@@ -137,8 +133,6 @@ def train(
             env = TrainEnv3(faulty=faulty, torque_mode=torque_mode)
         elif env_name == "env04":
             env = TrainEnv4(faulty=faulty, torque_mode=torque_mode)
-        elif env_name == "RWenv01":
-            env = TrainRWEnv1(faulty=faulty)
         env.reset()
     else:
         if env_name == "env01":
@@ -149,8 +143,6 @@ def train(
             env = make_vec_env(TrainEnv3, n_envs=env_num, env_kwargs={"faulty": faulty}, vec_env_cls=vec_env_cls)
         elif env_name == "env04":
             env = make_vec_env(TrainEnv4, n_envs=env_num, env_kwargs={"faulty": faulty}, vec_env_cls=vec_env_cls)
-        elif env_name == "RWenv01":
-            env = make_vec_env(TrainRWEnv1, n_envs=env_num, env_kwargs={"faulty": faulty}, vec_env_cls=vec_env_cls)
 
     model = PPO("MlpPolicy", env, verbose=2, tensorboard_log=logdir, device=device)
     for i in range(num_episode):
