@@ -60,8 +60,7 @@ def random_euler():
 
 
 def plot_history(dynamic_model):
-    fig, axes = plt.subplots(2, 2)
-
+    fig, axes = plt.subplots(2, 2, figsize=(10, 6))
     ax = axes[0, 0]
     ax.plot(dynamic_model.MRP_history, label=["x", "y", "z"])
     ax.set_title("MRP History")
@@ -81,4 +80,4 @@ def plot_history(dynamic_model):
     ax.plot(dynamic_model.error_angle_history, label="error")
     ax.set_title("error_angle_history")
     ax.legend()
-    plt.show()
+    return fig, axes
