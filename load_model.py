@@ -40,4 +40,4 @@ def evaluate(path: str, episode_num=10):
     plt.show()
 
 
-evaluate("C:\\training\\train_Basilisk\\menv01_False_wheel\\model\\2916352.zip")
+load("C:\\training\\train_Basilisk\\env01_False_wheel\\model\\16384000.zip")

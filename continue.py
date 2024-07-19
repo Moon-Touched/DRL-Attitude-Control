@@ -6,11 +6,12 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, SubprocVecEnv
 
 
-def train(
+def continue_train(
     path: str,
+    file_name: str,
     env_name: str,
     num_timestep: int,
-    num_episode: int = 2000,
+    num_episode: int = 1000,
     env_num: int = 4,
     vec_env_cls=DummyVecEnv,
     faulty: bool = False,
@@ -29,8 +30,7 @@ def train(
         os.makedirs(logdir)
 
     env = Tools.make_env(env_name=env_name, env_num=env_num, faulty=faulty, torque_mode=torque_mode, vec_env_cls=vec_env_cls)
-
-    model = PPO("MlpPolicy", env, verbose=2, tensorboard_log=logdir, device=device)
+    model = PPO.load(f"{models_dir}/{file_name}", env, verbose=2, tensorboard_log=logdir, device=device)
     for i in range(num_episode):
         print("**********************************")
         print(f"num:{i}")
@@ -40,13 +40,5 @@ def train(
 
 
 if __name__ == "__main__":
-    train(
-        path="E:\\training\\train_Basilisk",
-        env_name="benv05",
-        num_timestep=2048 * 12 * 10,
-        num_episode=500,
-        env_num=12,
-        faulty=False,
-        torque_mode="wheel",
-        device="cpu",
-    )
+    #continue_train(path="E:\\training\\train_Basilisk", file_name="100000", env_name="env04", num_timestep=100000, num_episode=1000, env_num=16, faulty=False, torque_mode="wheel", device="cuda")
+    pass
