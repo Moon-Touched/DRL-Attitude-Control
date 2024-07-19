@@ -6,7 +6,7 @@
 
   [Welcome to Basilisk: an Astrodynamics Simulation Framework — Basilisk 2.3.0 documentation (hanspeterschaub.info)](https://hanspeterschaub.info/basilisk/index.html)
 
-  * [ ] 自己的四元数模型与 Basilisk 的误差大约在 10^-4，训练效果不好，待验证是误差引起的还是训练环境本身有问题。
+  * [ ] Basilisk的模型已经测试可用，自己的动力学方程精度较低，正在测试。
 * pip
 
   ```python
