@@ -1,3 +1,6 @@
+import os
+
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import numpy as np
 import matplotlib.pyplot as plt
 from Envs import BasiliskEnv, MyEnv
@@ -88,15 +91,39 @@ class BEnv5(BasiliskEnv):
         pre_error = self.model.error_angle_history[-2]
         cur_error = self.model.error_angle_history[-1]
 
-        r1 = (pre_error - cur_error) / np.pi
+        r1 = pre_error - cur_error
 
         r2 = 0
         if np.abs(self.model.cur_omega[0]) > 1 or np.abs(self.model.cur_omega[1]) > 1 or np.abs(self.model.cur_omega[2]) > 1:
-            r2 = -1
+            r2 = -10
 
-        r3 = 0
         if cur_error < 0.0043633:
-            r3 = 1
+            r3 = 0.001
+        else:
+            r3 = -0.001
+
+        reward = r1 + r2 + r3
+        # print(f"r1: {r1}, r2: {r2}")
+        return reward
+
+
+class BEnv6(BasiliskEnv):
+    def calculate_reward(self):
+        pre_error = self.model.error_angle_history[-2]
+        cur_error = self.model.error_angle_history[-1]
+
+        r1 = pre_error - cur_error
+        if cur_error < 0.0043633:
+            r1 = r1 * 10
+
+        r2 = 0
+        if np.abs(self.model.cur_omega[0]) > 1 or np.abs(self.model.cur_omega[1]) > 1 or np.abs(self.model.cur_omega[2]) > 1:
+            r2 = -10
+
+        if cur_error < 0.0043633:
+            r3 = 0.001
+        else:
+            r3 = -0.001
 
         reward = r1 + r2 + r3
         # print(f"r1: {r1}, r2: {r2}")
@@ -270,6 +297,7 @@ def make_env(env_name: str, env_num: int, faulty: bool, torque_mode: str, vec_en
         "benv03": BEnv3,
         "benv04": BEnv4,
         "benv05": BEnv5,
+        "benv06": BEnv6,
         "menv01": MyEnv1,
         "menv02": MyEnv2,
         "menv03": MyEnv3,

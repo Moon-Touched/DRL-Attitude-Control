@@ -43,10 +43,10 @@ if __name__ == "__main__":
     train(
         path="E:\\training\\train_Basilisk",
         env_name="benv05",
-        num_timestep=2048 * 12 * 10,
-        num_episode=500,
-        env_num=12,
-        faulty=False,
+        num_timestep=50000,
+        num_episode=1000,
+        env_num=16,
+        faulty=True,
         torque_mode="wheel",
-        device="cpu",
+        device="cuda",
     )

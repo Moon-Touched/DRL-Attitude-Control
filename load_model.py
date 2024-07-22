@@ -8,13 +8,15 @@ import Tools
 
 def load(path: str):
     model = PPO.load(path)
-    env = Tools.make_env("benv01", 1, False, "wheel")
+    env = Tools.make_env("benv01", 1, True, "wheel")
     obs, _ = env.reset()
     for i in range(6000):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = env.step(action)
     fig, axes = Tools.plot_history(env.model)
     fig.suptitle(f"fault time: {env.fault_time}, wheel num: {env.wheel_num}")
+    
+    print(f"error: {env.model.error_angle_history[-1]}")
     plt.show()
 
 
@@ -24,7 +26,7 @@ def evaluate(path: str, episode_num=10):
     ss_error_history = []
     for k in range(episode_num):
         episode_reward = 0
-        env = Tools.make_env("menv01", 1, False, "wheel")
+        env = Tools.make_env("benv01", 1, False, "wheel")
         obs, _ = env.reset()
         for i in range(6000):
             action, _states = model.predict(obs, deterministic=True)
@@ -40,4 +42,4 @@ def evaluate(path: str, episode_num=10):
     plt.show()
 
 
-load("C:\\training\\train_Basilisk\\env01_False_wheel\\model\\16384000.zip")
+evaluate("E:\\training\\train_Basilisk\\benv06_False_wheel\\model\\3964928.zip")
